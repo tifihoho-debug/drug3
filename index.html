@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雙藍牙喇叭定時 A-B 循環播放器 (Windows 專用)</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent-color: #3b82f6;
+      --accent-hover: #2563eb;
+      --text-color: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 24px 16px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      text-align: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      color: #60a5fa;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+      background-color: #475569;
+      color: #cbd5e1;
+    }
+
+    .status-badge.connected {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success-color);
+      border: 1px solid var(--success-color);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    select, input[type="file"], input[type="time"], input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      background-color: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-color);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background-color: #334155;
+      color: #e2e8f0;
+      margin-top: 8px;
+    }
+
+    .btn-secondary:hover {
+      background-color: #475569;
+    }
+
+    .btn-test {
+      background-color: #8b5cf6;
+      color: white;
+      margin-top: 8px;
+    }
+
+    .btn-test:hover {
+      background-color: #7c3aed;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .slider-container input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent-color);
+    }
+
+    .slider-value {
+      font-size: 0.85rem;
+      min-width: 40px;
+      color: var(--text-muted);
+    }
+
+    /* Range controls */
+    .time-inputs {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .time-inputs div {
+      flex: 1;
+    }
+
+    /* Schedule Slots */
+    .schedule-slot {
+      background-color: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .schedule-slot label {
+      font-weight: 600;
+      color: #93c5fd;
+      min-width: 60px;
+      font-size: 0.85rem;
+    }
+
+    .schedule-inputs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 1;
+    }
+
+    .schedule-inputs input[type="time"] {
+      padding: 6px 8px;
+    }
+
+    /* Console Log */
+    .log-box {
+      background-color: #020617;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      height: 120px;
+      overflow-y: auto;
+      color: #a7f3d0;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+    }
+
+    .audio-info {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #475569;
+      transition: .4s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--success-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>🔊 雙藍牙喇叭定時 A-B 循環播放器</h1>
+    <p>Windows 專用版 | 支援雙聲道藍牙控制、MP3 精準剪輯定點 Loop 與每日排程</p>
+  </header>
+
+  <!-- Bluetooth Speakers Section -->
+  <div class="grid-2">
+    <!-- Speaker 1 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔊 連接 Speaker 1</div>
+        <span id="status1" class="status-badge">未連接</span>
+      </div>
+      
+      <div class="form-group">
+        <label>實體藍牙裝置選單：</label>
+        <select id="speaker1Select">
+          <option value="">-- 請先掃描周圍藍牙 --</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" onclick="scanBluetoothDevice(1)">
+        🔍 搜尋周圍藍牙裝置 (Web Bluetooth)
+      </button>
+      
+      <button class="btn btn-secondary" onclick="pickSystemOutput(1)">
+        🎙️ 選擇 Windows 已連線裝置 (setSinkId)
+      </button>
+
+      <button class="btn btn-test" onclick="playTestSound(1)">
+        🎵 測試高音蜂鳴 (Test Sound)
+      </button>
+
+      <div class="form-group" style="margin-top: 14px;">
+        <label>Speaker 1 獨立音量：</label>
+        <div class="slider-container">
+          <input type="range" id="volume1" min="0" max="1" step="0.01" value="0.8" oninput="updateVolume(1, this.value)">
+          <span id="volText1" class="slider-value">80%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Speaker 2 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔊 連接 Speaker 2</div>
+        <span id="status2" class="status-badge">未連接</span>
+      </div>
+      
+      <div class="form-group">
+        <label>實體藍牙裝置選單：</label>
+        <select id="speaker2Select">
+          <option value="">-- 請先掃描周圍藍牙 --</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" onclick="scanBluetoothDevice(2)">
+        🔍 搜尋周圍藍牙裝置 (Web Bluetooth)
+      </button>
+      
+      <button class="btn btn-secondary" onclick="pickSystemOutput(2)">
+        🎙️ 選擇 Windows 已連線裝置 (setSinkId)
+      </button>
+
+      <button class="btn btn-test" onclick="playTestSound(2)">
+        🎵 測試中音蜂鳴 (Test Sound)
+      </button>
+
+      <div class="form-group" style="margin-top: 14px;">
+        <label>Speaker 2 獨立音量：</label>
+        <div class="slider-container">
+          <input type="range" id="volume2" min="0" max="1" step="0.01" value="0.8" oninput="updateVolume(2, this.value)">
+          <span id="volText2" class="slider-value">80%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MP3 & A-B Loop Controls -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🎵 MP3 檔案上傳與 A-B 定點無縫 Loop 控制</div>
+    </div>
+
+    <div class="form-group">
+      <label>請選擇 MP3 音訊檔案：</label>
+      <input type="file" id="audioFileInput" accept="audio/mp3, audio/*" onchange="handleFileUpload(event)">
+      <div id="fileInfo" class="audio-info">尚未上載檔案</div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 14px;">
+      <div class="form-group">
+        <label>定點起點 A (秒)：</label>
+        <input type="number" id="loopA" value="0" min="0" step="0.1" onchange="updateLoopPoints()">
+      </div>
+      <div class="form-group">
+        <label>定點終點 B (秒)：</label>
+        <input type="number" id="loopB" value="10" min="0.1" step="0.1" onchange="updateLoopPoints()">
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <button class="btn btn-primary" onclick="manualStartLoop()">▶️ 立即開始 A-B 循環播放</button>
+      <button class="btn btn-secondary" style="background-color: var(--danger-color); margin-top: 0;" onclick="manualStopLoop()">⏹️ 停止播放</button>
+    </div>
+  </div>
+
+  <!-- Daily 3 Schedules -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">⏰ 每日 3 時段自動定時排程</div>
+      <div class="toggle-group">
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">開啟排程監聽：</span>
+        <label class="switch">
+          <input type="checkbox" id="scheduleToggle" checked onchange="toggleSchedule(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Slot 1 -->
+    <div class="schedule-slot">
+      <label>時段一：</label>
+      <div class="schedule-inputs">
+        <input type="time" id="s1_start" value="09:00">
+        <span>至</span>
+        <input type="time" id="s1_end" value="10:00">
+      </div>
+    </div>
+
+    <!-- Slot 2 -->
+    <div class="schedule-slot">
+      <label>時段二：</label>
+      <div class="schedule-inputs">
+        <input type="time" id="s2_start" value="14:00">
+        <span>至</span>
+        <input type="time" id="s2_end" value="15:00">
+      </div>
+    </div>
+
+    <!-- Slot 3 -->
+    <div class="schedule-slot">
+      <label>時段三：</label>
+      <div class="schedule-inputs">
+        <input type="time" id="s3_start" value="20:00">
+        <span>至</span>
+        <input type="time" id="s3_end" value="21:00">
+      </div>
+    </div>
+  </div>
+
+  <!-- Console Log -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📜 系統運行即時日誌</div>
+    </div>
+    <div id="logBox" class="log-box"></div>
+  </div>
+</div>
+
+<script>
+  let audioCtx = null;
+  let audioBuffer = null;
+  let currentSourceNode = null;
+  
+  // Independent Gain Nodes for Speaker 1 & 2
+  let gainNode1 = null;
+  let gainNode2 = null;
+
+  // Selected device IDs for setSinkId
+  let deviceSinkId1 = null;
+  let deviceSinkId2 = null;
+
+  let isLoopPlaying = false;
+  let scheduleCheckTimer = null;
+
+  function log(msg) {
+    const logBox = document.getElementById('logBox');
+    const timeStr = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.textContent = `[${timeStr}] ${msg}`;
+    logBox.appendChild(entry);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  // Initialize Web Audio Context
+  function initAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      gainNode1 = audioCtx.createGain();
+      gainNode2 = audioCtx.createGain();
+      
+      gainNode1.gain.value = parseFloat(document.getElementById('volume1').value);
+      gainNode2.gain.value = parseFloat(document.getElementById('volume2').value);
+
+      gainNode1.connect(audioCtx.destination);
+      gainNode2.connect(audioCtx.destination);
+      log("Web Audio Engine 已成功初始化。");
+    }
+  }
+
+  // Scan Real Bluetooth Devices via Web Bluetooth API
+  async function scanBluetoothDevice(speakerNum) {
+    try {
+      log(`正在開啟 Windows 藍牙掃描 (Speaker ${speakerNum})...`);
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['battery_service', 'device_information']
+      });
+
+      if (device) {
+        const selectElem = document.getElementById(`speaker${speakerNum}Select`);
+        selectElem.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = device.id;
+        opt.textContent = `✅ ${device.name || '已連線藍牙喇叭'} (${device.id.substring(0,6)})`;
+        selectElem.appendChild(opt);
+        selectElem.value = device.id;
+
+        const statusElem = document.getElementById(`status${speakerNum}`);
+        statusElem.className = 'status-badge connected';
+        statusElem.textContent = '已連接 (BLE)';
+
+        log(`Speaker ${speakerNum} 綁定成功：${device.name || '藍牙喇叭'}`);
+      }
+    } catch (err) {
+      log(`藍牙掃描提示: ${err.message || '取消或不支援'}`);
+    }
+  }
+
+  // Pick System Audio Output via setSinkId API
+  async function pickSystemOutput(speakerNum) {
+    initAudioContext();
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        alert("您的瀏覽器不支援 enumerateDevices API");
+        return;
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+
+      if (audioOutputs.length === 0) {
+        alert("未找到系統音訊輸出裝置。");
+        return;
+      }
+
+      const selectElem = document.getElementById(`speaker${speakerNum}Select`);
+      selectElem.innerHTML = '';
+
+      audioOutputs.forEach((dev, idx) => {
+        const opt = document.createElement('option');
+        opt.value = dev.deviceId;
+        opt.textContent = `🔊 ${dev.label || '音訊頻道 ' + (idx + 1)}`;
+        selectElem.appendChild(opt);
+      });
+
+      deviceSinkId1 = selectElem.value;
+      document.getElementById(`status${speakerNum}`).className = 'status-badge connected';
+      document.getElementById(`status${speakerNum}`).textContent = '已選取輸出';
+      log(`Speaker ${speakerNum} 載入 ${audioOutputs.length} 個系統聲道。`);
+
+    } catch (
